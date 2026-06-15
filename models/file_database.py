@@ -1,5 +1,4 @@
 import os
-import json
 from typing import Dict, List, Any, Optional
 from models.database import Table
 from models.exceptions import DatabaseError, RecordNotFoundError, InvalidInputError
@@ -58,6 +57,13 @@ class FileTable(Table):
             raise RecordNotFoundError(f"Record with id={record_id} not found")
 
         if filters:
+            if hasattr(self.storage, 'get_by_index'):
+                for field, value in filters.items():
+                    ids = self.storage.get_by_index(self.name, field, value)
+                    if ids:
+                        result = [r for r in result if r['id'] in ids]
+                        return result
+
             for key, value in filters.items():
                 result = [r for r in result if r.get(key) == value]
 

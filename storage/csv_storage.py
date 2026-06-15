@@ -3,6 +3,7 @@ import os
 import json
 from typing import Dict, List, Any
 from storage.base import StorageBackend
+from models.exceptions import DatabaseError
 
 
 class CSVStorage(StorageBackend):
@@ -23,60 +24,80 @@ class CSVStorage(StorageBackend):
         table_file = self._get_table_file(table_name)
         if not os.path.exists(table_file):
             return []
-        records = []
-        with open(table_file, 'r', encoding='utf-8', newline='') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                record = {'id': int(row['id'])}
-                for field, field_type in schema.items():
-                    if field in row and row[field]:
-                        if field_type == int:
-                            record[field] = int(row[field])
-                        elif field_type == float:
-                            record[field] = float(row[field])
-                        else:
-                            record[field] = row[field]
-                records.append(record)
-        return records
+        try:
+            with open(table_file, 'r', encoding='utf-8', newline='') as f:
+                reader = csv.DictReader(f)
+                records = []
+                for row in reader:
+                    record = {'id': int(row['id'])}
+                    for field, field_type in schema.items():
+                        if field in row and row[field]:
+                            if field_type is int:
+                                record[field] = int(row[field])
+                            elif field_type is float:
+                                record[field] = float(row[field])
+                            else:
+                                record[field] = row[field]
+                    records.append(record)
+                return records
+        except csv.Error as e:
+            raise DatabaseError(f"Invalid CSV in {table_file}: {e}")
+        except IOError as e:
+            raise DatabaseError(f"Cannot read {table_file}: {e}")
 
     def save_table(self, table_name: str, records: List[Dict]) -> None:
-        if not records:
-            return
         table_file = self._get_table_file(table_name)
-        fieldnames = ['id'] + [k for k in records[0].keys() if k != 'id']
-        with open(table_file, 'w', encoding='utf-8', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for record in records:
-                writer.writerow(record)
+        try:
+            fieldnames = ['id']
+            if records:
+                fieldnames += [k for k in records[0].keys() if k != 'id']
+            with open(table_file, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for record in records:
+                    writer.writerow(record)
+        except IOError as e:
+            raise DatabaseError(f"Cannot write {table_file}: {e}")
 
     def get_next_id(self, table_name: str) -> int:
         id_file = self._get_id_file(table_name)
         if os.path.exists(id_file):
-            with open(id_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('next_id', 1)
+            try:
+                with open(id_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('next_id', 1)
+            except (json.JSONDecodeError, IOError):
+                return 1
         return 1
 
     def save_next_id(self, table_name: str, next_id: int) -> None:
         id_file = self._get_id_file(table_name)
-        with open(id_file, 'w', encoding='utf-8') as f:
-            json.dump({'next_id': next_id}, f)
+        try:
+            with open(id_file, 'w', encoding='utf-8') as f:
+                json.dump({'next_id': next_id}, f)
+        except IOError as e:
+            raise DatabaseError(f"Cannot write {id_file}: {e}")
 
     def load_schema(self, table_name: str) -> Dict[str, type]:
         schema_file = self._get_schema_file(table_name)
         if os.path.exists(schema_file):
-            with open(schema_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                type_map = {'str': str, 'int': int, 'float': float}
-                return {k: type_map.get(v, str) for k, v in data.items()}
+            try:
+                with open(schema_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    type_map = {'str': str, 'int': int, 'float': float}
+                    return {k: type_map.get(v, str) for k, v in data.items()}
+            except (json.JSONDecodeError, IOError):
+                return {}
         return {}
 
     def save_schema(self, table_name: str, schema: Dict[str, type]) -> None:
         schema_file = self._get_schema_file(table_name)
         schema_str = {k: v.__name__ for k, v in schema.items()}
-        with open(schema_file, 'w', encoding='utf-8') as f:
-            json.dump(schema_str, f, indent=2, ensure_ascii=False)
+        try:
+            with open(schema_file, 'w', encoding='utf-8') as f:
+                json.dump(schema_str, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            raise DatabaseError(f"Cannot write {schema_file}: {e}")
 
     def delete_table(self, table_name: str) -> None:
         table_file = self._get_table_file(table_name)

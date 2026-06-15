@@ -210,9 +210,9 @@ class ConsoleInterface:
         kwargs = {}
         for field, field_type in self.current_table.schema.items():
             value = input(f"Enter {field} ({field_type.__name__}): ").strip()
-            if field_type == int:
+            if field_type is int:
                 kwargs[field] = int(value)
-            elif field_type == float:
+            elif field_type is float:
                 kwargs[field] = float(value)
             else:
                 kwargs[field] = value
@@ -240,9 +240,9 @@ class ConsoleInterface:
             value = input(f"{field}: ").strip()
             if value:
                 field_type = self.current_table.schema[field]
-                if field_type == int:
+                if field_type is int:
                     filters[field] = int(value)
-                elif field_type == float:
+                elif field_type is float:
                     filters[field] = float(value)
                 else:
                     filters[field] = value
@@ -262,9 +262,9 @@ class ConsoleInterface:
             value = input(f"New {field}: ").strip()
             if value:
                 field_type = self.current_table.schema[field]
-                if field_type == int:
+                if field_type is int:
                     updates[field] = int(value)
-                elif field_type == float:
+                elif field_type is float:
                     updates[field] = float(value)
                 else:
                     updates[field] = value

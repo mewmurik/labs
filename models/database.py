@@ -1,5 +1,5 @@
 from typing import Dict, List, Any, Optional
-from .exceptions import RecordNotFoundError, InvalidInputError, DatabaseError
+from models.exceptions import RecordNotFoundError, InvalidInputError, DatabaseError
 
 
 class Table:
