@@ -57,4 +57,30 @@ class IndexedStorage(JSONStorage):
         self.indexes[table_name][field] = index
         self._save_index(table_name, field, index)
 
-    def drop
+    def drop_index(self, table_name: str, field: str) -> None:
+        if table_name in self.indexes and field in self.indexes[table_name]:
+            del self.indexes[table_name][field]
+            index_file = self._get_index_file(table_name, field)
+            if os.path.exists(index_file):
+                os.remove(index_file)
+
+    def get_by_index(self, table_name: str, field: str, value: Any) -> List[int]:
+        if table_name in self.indexes and field in self.indexes[table_name]:
+            str_value = str(value)
+            return self.indexes[table_name][field].get(str_value, [])
+        return []
+
+    def save_table(self, table_name: str, records: List[Dict]) -> None:
+        super().save_table(table_name, records)
+        if table_name in self.indexes:
+            for field in list(self.indexes[table_name].keys()):
+                self.create_index(table_name, field)
+
+    def delete_table(self, table_name: str) -> None:
+        super().delete_table(table_name)
+        if table_name in self.indexes:
+            for field in list(self.indexes[table_name].keys()):
+                index_file = self._get_index_file(table_name, field)
+                if os.path.exists(index_file):
+                    os.remove(index_file)
+            del self.indexes[table_name]

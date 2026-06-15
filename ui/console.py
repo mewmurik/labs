@@ -192,9 +192,12 @@ class ConsoleInterface:
 
         try:
             choice = int(input("Select table by number: "))
-            self.current_table = self.db.get_table(tables[choice - 1])
-            print(f"Selected table: {self.current_table.name}")
-        except (ValueError, IndexError):
+            if 1 <= choice <= len(tables):
+                self.current_table = self.db.get_table(tables[choice - 1])
+                print(f"Selected table: {self.current_table.name}")
+            else:
+                print("Invalid choice")
+        except ValueError:
             print("Invalid choice")
 
     def _list_tables(self):
@@ -229,9 +232,12 @@ class ConsoleInterface:
                 print(f"  {r}")
 
     def _find_by_id(self):
-        record_id = int(input("Enter id: "))
-        record = self.current_table.get(record_id)
-        print(f"  {record}")
+        try:
+            record_id = int(input("Enter id: "))
+            record = self.current_table.get(record_id)
+            print(f"  {record}")
+        except ValueError:
+            print("Invalid id format")
 
     def _filter_records(self):
         print("Filtering (leave empty to skip)")
@@ -255,27 +261,33 @@ class ConsoleInterface:
                 print(f"  {r}")
 
     def _update_record(self):
-        record_id = int(input("Enter id to update: "))
-        print("Leave empty to skip")
-        updates = {}
-        for field in self.current_table.schema.keys():
-            value = input(f"New {field}: ").strip()
-            if value:
-                field_type = self.current_table.schema[field]
-                if field_type is int:
-                    updates[field] = int(value)
-                elif field_type is float:
-                    updates[field] = float(value)
-                else:
-                    updates[field] = value
+        try:
+            record_id = int(input("Enter id to update: "))
+            print("Leave empty to skip")
+            updates = {}
+            for field in self.current_table.schema.keys():
+                value = input(f"New {field}: ").strip()
+                if value:
+                    field_type = self.current_table.schema[field]
+                    if field_type is int:
+                        updates[field] = int(value)
+                    elif field_type is float:
+                        updates[field] = float(value)
+                    else:
+                        updates[field] = value
 
-        self.current_table.update(record_id, **updates)
-        print(f"Record id={record_id} updated")
+            self.current_table.update(record_id, **updates)
+            print(f"Record id={record_id} updated")
+        except ValueError:
+            print("Invalid id format")
 
     def _delete_record(self):
-        record_id = int(input("Enter id to delete: "))
-        self.current_table.delete(record_id)
-        print(f"Record id={record_id} deleted")
+        try:
+            record_id = int(input("Enter id to delete: "))
+            self.current_table.delete(record_id)
+            print(f"Record id={record_id} deleted")
+        except ValueError:
+            print("Invalid id format")
 
     def _sort_records(self):
         available_fields = list(self.current_table.schema.keys())
