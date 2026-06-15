@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+json_data/
+csv_data/
+indexed_data/
+test_json_data/
+test_csv_data/
+.pytest_cache/
