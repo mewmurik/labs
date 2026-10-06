@@ -1,61 +1,13 @@
 from typing import Optional
-from models.file_database import FileDatabase
-from models.database import Database as InMemoryDatabase
-from models.exceptions import RecordNotFoundError, InvalidInputError, DatabaseError
-from storage.json_storage import JSONStorage
-from storage.csv_storage import CSVStorage
-from storage.indexed_storage import IndexedStorage
+from models.database import Database
 
 
 class ConsoleInterface:
-    def __init__(self):
-        self.db = None
+    def __init__(self, db: Optional[Database] = None):
+        self.db = db or Database()
         self.current_table = None
-        self.mode = "memory"
 
     def run(self):
-        print("Welcome to In-Memory/File Database")
-        self._select_mode()
-
-        while True:
-            if self.current_table is None:
-                self._show_main_menu()
-            else:
-                self._show_table_menu()
-
-    def _select_mode(self):
-        print("\nSelect storage mode:")
-        print("1. In-Memory (data lost after exit)")
-        print("2. File (JSON) - data saved to disk")
-        print("3. File (CSV) - data saved to disk")
-        print("4. File (JSON with indexes) - fast search")
-
-        choice = input("Choose mode: ").strip()
-
-        if choice == '1':
-            self.db = InMemoryDatabase()
-            self.mode = "memory"
-            print("In-Memory mode selected")
-        elif choice == '2':
-            storage = JSONStorage("json_data")
-            self.db = FileDatabase(storage)
-            self.mode = "json"
-            print("JSON file mode selected")
-        elif choice == '3':
-            storage = CSVStorage("csv_data")
-            self.db = FileDatabase(storage)
-            self.mode = "csv"
-            print("CSV file mode selected")
-        elif choice == '4':
-            storage = IndexedStorage("indexed_data")
-            self.db = FileDatabase(storage)
-            self.mode = "indexed"
-            print("Indexed JSON mode selected")
-        else:
-            self.db = InMemoryDatabase()
-            self.mode = "memory"
-            print("Invalid choice. In-Memory mode selected")
-
         try:
             self.db.create_table('Students', {
                 'name': str,
@@ -63,12 +15,20 @@ class ConsoleInterface:
                 'grade': float
             })
             print("Table 'Students' created by default")
-        except DatabaseError:
+        except Exception:
             pass
+
+        print("Welcome to In-Memory Database")
+
+        while True:
+            if self.current_table is None:
+                self._show_main_menu()
+            else:
+                self._show_table_menu()
 
     def _show_main_menu(self):
         print("\n" + "=" * 50)
-        print(f"   Database ({self.mode} mode)")
+        print("   In-Memory Database")
         print("=" * 50)
         print("1. Create new table")
         print("2. Select table")
@@ -86,12 +46,12 @@ class ConsoleInterface:
             self._list_tables()
         elif choice == '0':
             print("Goodbye")
-            exit(0)
+            raise SystemExit(0)
         else:
             print("Invalid input")
 
     def _show_table_menu(self):
-        print(f"\n" + "=" * 50)
+        print("\n" + "=" * 50)
         print(f"   Table: {self.current_table.name}")
         print(f"   Schema: {self.current_table.schema}")
         print("=" * 50)
@@ -102,9 +62,6 @@ class ConsoleInterface:
         print("5. Update record")
         print("6. Delete record")
         print("7. Sort records")
-        if self.mode == "indexed":
-            print("8. Create index")
-            print("9. Search by index")
         print("0. Back to tables")
         print("-" * 50)
 
@@ -125,10 +82,6 @@ class ConsoleInterface:
                 self._delete_record()
             elif choice == '7':
                 self._sort_records()
-            elif choice == '8' and self.mode == "indexed":
-                self._create_index()
-            elif choice == '9' and self.mode == "indexed":
-                self._search_by_index()
             elif choice == '0':
                 self.current_table = None
             else:
@@ -177,7 +130,7 @@ class ConsoleInterface:
         try:
             self.db.create_table(name, schema)
             print(f"Table '{name}' created")
-        except DatabaseError as e:
+        except Exception as e:
             print(f"Error: {e}")
 
     def _select_table(self):
@@ -302,49 +255,5 @@ class ConsoleInterface:
             print(f"\nSorted records by '{field}':")
             for r in sorted_records:
                 print(f"  {r}")
-        except InvalidInputError as e:
+        except Exception as e:
             print(f"Error: {e}")
-
-    def _create_index(self):
-        if self.mode != "indexed":
-            print("Indexes only available in indexed mode")
-            return
-        available_fields = list(self.current_table.schema.keys())
-        print(f"Available fields: {', '.join(available_fields)}")
-        field = input("Enter field to index: ").strip()
-        if field not in available_fields:
-            print(f"Field '{field}' does not exist")
-            return
-        storage = self.db.storage
-        if hasattr(storage, 'create_index'):
-            storage.create_index(self.current_table.name, field)
-            print(f"Index created on field '{field}'")
-        else:
-            print("Indexing not supported")
-
-    def _search_by_index(self):
-        if self.mode != "indexed":
-            print("Indexes only available in indexed mode")
-            return
-        available_fields = list(self.current_table.schema.keys())
-        print(f"Available fields: {', '.join(available_fields)}")
-        field = input("Enter field to search: ").strip()
-        if field not in available_fields:
-            print(f"Field '{field}' does not exist")
-            return
-        value = input(f"Enter value for {field}: ").strip()
-        storage = self.db.storage
-        if hasattr(storage, 'get_by_index'):
-            ids = storage.get_by_index(self.current_table.name, field, value)
-            if ids:
-                print(f"Records found with {field}={value}: {ids}")
-                for record_id in ids:
-                    try:
-                        record = self.current_table.get(record_id)
-                        print(f"  {record}")
-                    except RecordNotFoundError:
-                        pass
-            else:
-                print("No records found")
-        else:
-            print("Indexing not supported")

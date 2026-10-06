@@ -13,4 +13,9 @@ csv_data/
 indexed_data/
 test_json_data/
 test_csv_data/
+test_json_storage/
+test_csv_storage/
+test_indexed_storage/
 .pytest_cache/
+.coverage
+htmlcov/
